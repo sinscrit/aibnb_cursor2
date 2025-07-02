@@ -284,12 +284,12 @@
     - [x] Include redirect after successful creation
     - [x] Test: Verify property creation flow works end-to-end
 
-34. **Integrate Property API Calls**
-    - [ ] Create `lib/api/properties.ts` file
-    - [ ] Implement createProperty API client function
-    - [ ] Implement getProperties API client function
-    - [ ] Add error handling and response formatting
-    - [ ] Test: Verify API client functions work with backend
+34. **Integrate Property API Calls** ✅
+    - [x] Create `lib/api/properties.ts` file
+    - [x] Implement createProperty API client function
+    - [x] Implement getProperties API client function
+    - [x] Add error handling and response formatting
+    - [x] Test: Verify API client functions work with backend
 
 ### 4.2 Item Management UI (4 tasks)
 
@@ -415,7 +415,7 @@ Upon completion, verify the complete value loop works:
 - [ ] Tasks 31-36: Frontend Implementation
 - [ ] Tasks 37-42: Testing & Documentation
 
-**Progress: 31/42 tasks completed (73.81%)**
+**Progress: 32/42 tasks completed (76.19%)**
 
 ---
 

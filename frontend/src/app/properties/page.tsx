@@ -3,13 +3,13 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Property } from '@/types/property';
-import apiClient from '@/lib/api/client';
+import { getProperties, deleteProperty, PropertyFilters } from '@/lib/api/properties';
 
 export default function PropertiesPage(): React.JSX.Element {
   const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [sortBy, setSortBy] = useState<string>('created_at');
+  const [sortBy, setSortBy] = useState<'created_at' | 'updated_at' | 'name' | 'property_type'>('created_at');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
   const fetchProperties = React.useCallback(async () => {
@@ -17,25 +17,14 @@ export default function PropertiesPage(): React.JSX.Element {
       setLoading(true);
       setError(null);
       
-      const response = await apiClient.get<{
-        success: boolean;
-        data: Property[];
-        message: string;
-        meta: {
-          count: number;
-          filters: Record<string, unknown>;
-        };
-      }>('/api/properties', {
+      const filters: PropertyFilters = {
         sortBy,
         sortOrder,
         limit: 50
-      });
+      };
 
-      if (response.success && response.data) {
-        setProperties(response.data);
-      } else {
-        setError('Failed to load properties');
-      }
+      const result = await getProperties(filters);
+      setProperties(result.properties);
     } catch (err: unknown) {
       console.error('Error fetching properties:', err);
       const errorMessage = err instanceof Error ? err.message : 'Failed to load properties';
@@ -56,7 +45,7 @@ export default function PropertiesPage(): React.JSX.Element {
     }
 
     try {
-      await apiClient.delete(`/api/properties/${propertyId}`);
+      await deleteProperty(propertyId);
       // Remove the deleted property from the list
       setProperties(properties.filter(p => p.id !== propertyId));
     } catch (err: unknown) {
@@ -128,7 +117,7 @@ export default function PropertiesPage(): React.JSX.Element {
             <label className="text-sm font-medium text-gray-700">Sort by:</label>
             <select
               value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
+              onChange={(e) => setSortBy(e.target.value as 'created_at' | 'updated_at' | 'name' | 'property_type')}
               className="border-gray-300 rounded-md shadow-sm text-sm focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="created_at">Date Created</option>

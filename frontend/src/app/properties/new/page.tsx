@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import PropertyForm from '@/components/dashboard/PropertyForm';
 import { CreatePropertyData } from '@/types/property';
-import apiClient from '@/lib/api/client';
+import { createProperty } from '@/lib/api/properties';
 
 export default function NewPropertyPage(): React.JSX.Element {
   const router = useRouter();
@@ -28,26 +28,13 @@ export default function NewPropertyPage(): React.JSX.Element {
       // Type assertion since we've validated required fields
       const createData = formData as CreatePropertyData;
 
-      const response = await apiClient.post<{
-        success: boolean;
-        data: {
-          id: string;
-          name: string;
-          property_type: string;
-        };
-        message: string;
-      }>('/api/properties', createData);
-
-      if (response.success && response.data) {
-        setSuccessMessage(`Property "${response.data.name}" created successfully!`);
-        
-        // Redirect to properties list after a short delay to show success message
-        setTimeout(() => {
-          router.push('/properties');
-        }, 2000);
-      } else {
-        setError('Failed to create property. Please try again.');
-      }
+      const createdProperty = await createProperty(createData);
+      setSuccessMessage(`Property "${createdProperty.name}" created successfully!`);
+      
+      // Redirect to properties list after a short delay to show success message
+      setTimeout(() => {
+        router.push('/properties');
+      }, 2000);
     } catch (err: unknown) {
       console.error('Property creation error:', err);
       
