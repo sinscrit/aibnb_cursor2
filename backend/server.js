@@ -53,6 +53,15 @@ app.get('/api', (req, res) => {
   });
 });
 
+// Import and mount API routes
+const propertyRoutes = require('./routes/propertyRoutes');
+const itemRoutes = require('./routes/itemRoutes');
+const qrCodeRoutes = require('./routes/qrCodeRoutes');
+
+app.use('/api/properties', propertyRoutes);
+app.use('/api/items', itemRoutes);
+app.use('/api/qr-codes', qrCodeRoutes);
+
 // 404 handler for undefined routes
 app.use('*', handleUnknownRoute);
 
