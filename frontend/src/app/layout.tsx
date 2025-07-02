@@ -19,7 +19,11 @@ export const metadata: Metadata = {
   description: process.env.NEXT_PUBLIC_APP_DESCRIPTION || 'AI-powered Property Management System',
   keywords: ['property management', 'QR codes', 'inventory', 'real estate'],
   authors: [{ name: 'Property Management Team' }],
-  viewport: 'width=device-width, initial-scale=1',
+};
+
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
 };
 
 export default function RootLayout({
