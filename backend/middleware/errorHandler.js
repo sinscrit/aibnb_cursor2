@@ -9,12 +9,14 @@ const logger = require('../config/logger');
  * Custom Application Error class
  */
 class AppError extends Error {
-  constructor(message, statusCode, isOperational = true) {
+  constructor(message, statusCode, isOperational = true, type = null, code = null) {
     super(message);
     
     this.statusCode = statusCode;
     this.status = `${statusCode}`.startsWith('4') ? 'fail' : 'error';
     this.isOperational = isOperational;
+    this.type = type || (statusCode >= 400 && statusCode < 500 ? 'client_error' : 'server_error');
+    this.code = code || 'GENERIC_ERROR';
     
     Error.captureStackTrace(this, this.constructor);
   }
@@ -68,15 +70,55 @@ const handleJWTExpiredError = () => {
 };
 
 /**
+ * Handle rate limiting errors
+ */
+const handleRateLimitError = () => {
+  return new AppError('Too many requests from this IP, please try again later.', 429);
+};
+
+/**
+ * Handle file upload errors
+ */
+const handleFileUploadError = (error) => {
+  let message = 'File upload failed';
+  let statusCode = 400;
+
+  if (error.code === 'LIMIT_FILE_SIZE') {
+    message = 'File too large';
+  } else if (error.code === 'LIMIT_FILE_COUNT') {
+    message = 'Too many files';
+  } else if (error.code === 'LIMIT_UNEXPECTED_FILE') {
+    message = 'Unexpected file field';
+  }
+
+  return new AppError(message, statusCode);
+};
+
+/**
+ * Handle validation middleware errors
+ */
+const handleExpressValidatorError = (error) => {
+  const errors = error.array().map(err => `${err.param}: ${err.msg}`);
+  const message = `Validation Error: ${errors.join(', ')}`;
+  return new AppError(message, 400);
+};
+
+/**
  * Send error response in development
  */
 const sendErrorDev = (err, res) => {
   res.status(err.statusCode).json({
+    success: false,
     status: err.status,
-    error: err,
     message: err.message,
-    stack: err.stack,
-    timestamp: new Date().toISOString()
+    error: {
+      type: err.type || 'server_error',
+      code: err.code || 'UNKNOWN_ERROR',
+      details: err.message,
+      stack: err.stack
+    },
+    timestamp: new Date().toISOString(),
+    environment: 'development'
   });
 };
 
@@ -87,8 +129,13 @@ const sendErrorProd = (err, res) => {
   // Operational, trusted error: send message to client
   if (err.isOperational) {
     res.status(err.statusCode).json({
+      success: false,
       status: err.status,
       message: err.message,
+      error: {
+        type: err.type || 'client_error',
+        code: err.code || 'OPERATIONAL_ERROR'
+      },
       timestamp: new Date().toISOString()
     });
   } else {
@@ -96,8 +143,13 @@ const sendErrorProd = (err, res) => {
     logger.error('ERROR 💥', err);
     
     res.status(500).json({
+      success: false,
       status: 'error',
       message: 'Something went wrong!',
+      error: {
+        type: 'server_error',
+        code: 'INTERNAL_ERROR'
+      },
       timestamp: new Date().toISOString()
     });
   }
@@ -138,6 +190,18 @@ const globalErrorHandler = (err, req, res, next) => {
     
     if (error.name === 'TokenExpiredError') {
       error = handleJWTExpiredError();
+    }
+    
+    if (error.type === 'too_many_requests' || error.message?.includes('Too many requests')) {
+      error = handleRateLimitError();
+    }
+    
+    if (error.code?.startsWith('LIMIT_') || error.name === 'MulterError') {
+      error = handleFileUploadError(error);
+    }
+    
+    if (error.array && typeof error.array === 'function') {
+      error = handleExpressValidatorError(error);
     }
 
     logger.error('Production Error:', {
