@@ -4,6 +4,10 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 require('dotenv').config();
 
+// Import custom middleware
+const logger = require('./config/logger');
+const { globalErrorHandler, handleUnknownRoute } = require('./middleware/errorHandler');
+
 const app = express();
 const PORT = process.env.PORT || 3001;
 
@@ -16,8 +20,9 @@ app.use(cors({
   credentials: true
 }));
 
-// Logging middleware
+// Logging middleware - use both morgan and custom logger
 app.use(morgan('combined'));
+app.use(logger.requestMiddleware());
 
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
@@ -49,21 +54,10 @@ app.get('/api', (req, res) => {
 });
 
 // 404 handler for undefined routes
-app.use('*', (req, res) => {
-  res.status(404).json({
-    error: 'Route not found',
-    message: `The requested route ${req.originalUrl} does not exist`
-  });
-});
+app.use('*', handleUnknownRoute);
 
 // Global error handler
-app.use((err, req, res, next) => {
-  console.error('Error:', err);
-  res.status(500).json({
-    error: 'Internal Server Error',
-    message: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong'
-  });
-});
+app.use(globalErrorHandler);
 
 // Start server
 app.listen(PORT, () => {
