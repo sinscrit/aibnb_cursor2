@@ -79,11 +79,11 @@
    - [x] Test: Verify build system compiles without errors
 
 8. **Setup Frontend-Backend Connection**
-   - [ ] Create API client configuration
-   - [ ] Set up environment variables for API endpoints
-   - [ ] Create basic HTTP client utility
-   - [ ] Configure CORS for development
-   - [ ] Test: Verify frontend can make HTTP requests to backend
+   - [x] Create API client configuration
+   - [x] Set up environment variables for API endpoints
+   - [x] Create basic HTTP client utility
+   - [x] Configure CORS for development
+   - [x] Test: Verify frontend can make HTTP requests to backend
 
 9. **Create Basic Layout Components**
    - [ ] Create `components/shared/Layout.tsx` component
