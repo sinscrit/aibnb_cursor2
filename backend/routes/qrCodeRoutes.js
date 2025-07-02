@@ -21,6 +21,11 @@ router.get('/', qrCodeController.getQRCodes);
 router.get('/:qrId', qrCodeController.getQRCodeByQRId);
 router.post('/:qrId/scan', qrCodeController.recordScan);
 
+// QR Code image and validation endpoints
+router.get('/:qrId/download', qrCodeController.downloadQRCode);
+router.post('/:qrId/validate', qrCodeController.validateQRCode);
+router.post('/:qrId/regenerate', qrCodeController.regenerateQRCode);
+
 // Management endpoints (for database IDs, not QR IDs)
 router.put('/:id', qrCodeController.updateQRCode);
 router.delete('/:id', qrCodeController.deleteQRCode);

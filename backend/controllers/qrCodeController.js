@@ -4,6 +4,7 @@
  */
 
 const qrCodeDataAccess = require('../services/qrCodeDataAccess');
+const qrService = require('../services/qrService');
 const logger = require('../config/logger');
 
 class QRCodeController {
@@ -42,17 +43,17 @@ class QRCodeController {
                 customQRId: req.body.customQRId || null
             };
 
-            // Create QR code using data access layer
-            const result = await qrCodeDataAccess.createQRCode(req.body.item_id, userId, options);
+            // Create QR code with image generation using QR service
+            const result = await qrService.generateQRCodeForItem(req.body.item_id, userId, options);
 
-            // Handle database/service errors
+            // Handle errors from QR service
             if (!result.success) {
                 let statusCode = 500;
                 if (result.error?.type === 'validation') {
                     statusCode = 400;
-                } else if (result.error?.type === 'authorization') {
+                } else if (result.error?.type === 'authorization' || result.error?.code === 'ITEM_NOT_FOUND') {
                     statusCode = 404; // Item not found or access denied
-                } else if (result.error?.type === 'constraint') {
+                } else if (result.error?.type === 'constraint' || result.error?.code === 'QR_CODE_EXISTS') {
                     statusCode = 409; // Already has QR code
                 }
 
@@ -402,6 +403,302 @@ class QRCodeController {
             res.status(500).json({
                 success: false,
                 message: 'Internal server error during scan recording',
+                error: {
+                    type: 'server_error',
+                    code: 'INTERNAL_ERROR'
+                }
+            });
+        }
+    }
+
+    /**
+     * Download QR code image
+     * GET /api/qr-codes/:qrId/download
+     */
+    async downloadQRCode(req, res) {
+        try {
+            const startTime = Date.now();
+            const qrId = req.params.qrId;
+
+            logger.info('QR code download request:', {
+                qrId,
+                ip: req.ip,
+                userAgent: req.get('User-Agent')
+            });
+
+            // Validate QR ID format
+            if (!qrId || typeof qrId !== 'string') {
+                return res.status(400).json({
+                    success: false,
+                    message: 'QR ID is required and must be a valid string',
+                    error: {
+                        type: 'validation',
+                        field: 'qrId',
+                        code: 'INVALID_QR_ID'
+                    }
+                });
+            }
+
+            // Get QR code file using QR service
+            const result = await qrService.getQRCodeFile(qrId);
+
+            if (!result.success) {
+                const statusCode = result.error?.code === 'QR_CODE_NOT_FOUND' ? 404 : 500;
+                
+                logger.warn('QR code download failed:', {
+                    qrId,
+                    ip: req.ip,
+                    error: result.error,
+                    message: result.message,
+                    duration: Date.now() - startTime
+                });
+
+                return res.status(statusCode).json({
+                    success: false,
+                    message: result.message,
+                    error: {
+                        type: result.error?.type || 'server_error',
+                        code: result.error?.code || 'QR_DOWNLOAD_FAILED'
+                    }
+                });
+            }
+
+            // Set appropriate headers for file download
+            res.setHeader('Content-Type', result.contentType);
+            res.setHeader('Content-Disposition', `attachment; filename="${result.filename}"`);
+            res.setHeader('Content-Length', result.fileSize);
+
+            // Send file
+            res.sendFile(result.filePath, (err) => {
+                if (err) {
+                    logger.error('QR code file send error:', {
+                        qrId,
+                        filePath: result.filePath,
+                        error: err.message
+                    });
+                    
+                    // Only send error response if headers not yet sent
+                    if (!res.headersSent) {
+                        res.status(500).json({
+                            success: false,
+                            message: 'Failed to send QR code file',
+                            error: {
+                                type: 'file_error',
+                                code: 'FILE_SEND_FAILED'
+                            }
+                        });
+                    }
+                } else {
+                    logger.info('QR code download completed:', {
+                        qrId,
+                        filename: result.filename,
+                        fileSize: result.fileSize,
+                        regenerated: result.regenerated || false,
+                        ip: req.ip,
+                        duration: Date.now() - startTime
+                    });
+                }
+            });
+
+        } catch (error) {
+            logger.error('QR code download error:', error);
+            
+            if (!res.headersSent) {
+                res.status(500).json({
+                    success: false,
+                    message: 'Internal server error during QR code download',
+                    error: {
+                        type: 'server_error',
+                        code: 'INTERNAL_ERROR'
+                    }
+                });
+            }
+        }
+    }
+
+    /**
+     * Regenerate QR code image
+     * POST /api/qr-codes/:qrId/regenerate
+     */
+    async regenerateQRCode(req, res) {
+        try {
+            const startTime = Date.now();
+            const qrId = req.params.qrId;
+            const userId = req.user?.id || qrCodeDataAccess.demoUserId;
+
+            logger.info('QR code regeneration request:', {
+                qrId,
+                userId,
+                body: req.body
+            });
+
+            // Validate QR ID format
+            if (!qrId || typeof qrId !== 'string') {
+                return res.status(400).json({
+                    success: false,
+                    message: 'QR ID is required and must be a valid string',
+                    error: {
+                        type: 'validation',
+                        field: 'qrId',
+                        code: 'INVALID_QR_ID'
+                    }
+                });
+            }
+
+            // Regenerate QR code using QR service
+            const options = req.body || {};
+            const result = await qrService.regenerateQRCode(qrId, options);
+
+            if (!result.success) {
+                const statusCode = result.error?.code === 'QR_CODE_NOT_FOUND' ? 404 : 500;
+                
+                logger.warn('QR code regeneration failed:', {
+                    qrId,
+                    userId,
+                    error: result.error,
+                    message: result.message,
+                    duration: Date.now() - startTime
+                });
+
+                return res.status(statusCode).json({
+                    success: false,
+                    message: result.message,
+                    error: {
+                        type: result.error?.type || 'server_error',
+                        code: result.error?.code || 'QR_REGENERATION_FAILED'
+                    }
+                });
+            }
+
+            // Success response
+            logger.info('QR code regenerated successfully:', {
+                qrId,
+                filename: result.imageInfo.filename,
+                fileSize: result.imageInfo.fileSize,
+                userId,
+                duration: Date.now() - startTime
+            });
+
+            res.status(200).json({
+                success: true,
+                message: result.message,
+                data: {
+                    ...result.data,
+                    imageInfo: result.imageInfo
+                }
+            });
+
+        } catch (error) {
+            logger.error('QR code regeneration error:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Internal server error during QR code regeneration',
+                error: {
+                    type: 'server_error',
+                    code: 'INTERNAL_ERROR'
+                }
+            });
+        }
+    }
+
+    /**
+     * Validate QR code (alternative to getQRCodeByQRId)
+     * POST /api/qr-codes/:qrId/validate
+     */
+    async validateQRCode(req, res) {
+        try {
+            const startTime = Date.now();
+            const qrId = req.params.qrId;
+
+            logger.info('QR code validation request:', {
+                qrId,
+                ip: req.ip,
+                userAgent: req.get('User-Agent'),
+                body: req.body
+            });
+
+            // Validate QR ID format
+            if (!qrId || typeof qrId !== 'string') {
+                return res.status(400).json({
+                    success: false,
+                    message: 'QR ID is required and must be a valid string',
+                    error: {
+                        type: 'validation',
+                        field: 'qrId',
+                        code: 'INVALID_QR_ID'
+                    }
+                });
+            }
+
+            // Get QR code using data access layer (includes validation)
+            const result = await qrCodeDataAccess.getQRCodeByQRId(qrId);
+
+            if (!result.success) {
+                const statusCode = result.message.includes('not found') ? 404 : 500;
+                logger.warn('QR code validation failed:', {
+                    qrId,
+                    ip: req.ip,
+                    error: result.error,
+                    message: result.message,
+                    duration: Date.now() - startTime
+                });
+
+                return res.status(statusCode).json({
+                    success: false,
+                    message: result.message,
+                    error: {
+                        type: result.error?.type || 'not_found',
+                        code: statusCode === 404 ? 'QR_CODE_NOT_FOUND' : 'QR_CODE_VALIDATION_FAILED'
+                    }
+                });
+            }
+
+            // Check if QR code is active
+            const isValid = result.data.status === 'active';
+            const statusMessage = isValid ? 'QR code is valid and active' : 
+                                           `QR code is ${result.data.status} and cannot be scanned`;
+
+            // Success response with validation result
+            logger.info('QR code validation completed:', {
+                qrId: result.data.qr_id,
+                isValid,
+                status: result.data.status,
+                itemName: result.data.item?.name,
+                ip: req.ip,
+                duration: Date.now() - startTime
+            });
+
+            res.status(200).json({
+                success: true,
+                message: statusMessage,
+                valid: isValid,
+                data: {
+                    qr_id: result.data.qr_id,
+                    status: result.data.status,
+                    scan_count: result.data.scan_count,
+                    created_at: result.data.created_at,
+                    last_scanned: result.data.last_scanned,
+                    item: {
+                        id: result.data.item.id,
+                        name: result.data.item.name,
+                        description: result.data.item.description,
+                        location: result.data.item.location,
+                        media_url: result.data.item.media_url,
+                        media_type: result.data.item.media_type
+                    },
+                    property: {
+                        id: result.data.property.id,
+                        name: result.data.property.name,
+                        property_type: result.data.property.property_type
+                    }
+                }
+            });
+
+        } catch (error) {
+            logger.error('QR code validation error:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Internal server error during QR code validation',
                 error: {
                     type: 'server_error',
                     code: 'INTERNAL_ERROR'
