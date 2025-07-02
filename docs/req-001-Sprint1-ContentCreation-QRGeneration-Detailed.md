@@ -250,12 +250,12 @@
     - [x] Add QR code download endpoints
     - [x] Test: Verify routes return proper QR code data
 
-30. **Integrate QR API**
-    - [ ] Connect QR routes to main Express app
-    - [ ] Test QR code generation for valid items
-    - [ ] Test QR code validation and lookup
-    - [ ] Test QR code download functionality
-    - [ ] Test: Verify end-to-end QR code API functionality
+30. **Integrate QR API** ✅
+    - [x] Connect QR routes to main Express app
+    - [x] Test QR code generation for valid items
+    - [x] Test QR code validation and lookup
+    - [x] Test QR code download functionality
+    - [x] Test: Verify end-to-end QR code API functionality
 
 ---
 
@@ -411,12 +411,11 @@ Upon completion, verify the complete value loop works:
 - [x] Tasks 1-16: Project foundation, database schema, and data access base (COMPLETED)
 - [x] Tasks 17-18: Service Layer completion (COMPLETED)
 - [x] **Tasks 19-24: API Controllers & Middleware (COMPLETED)**
-- [x] **Task 25-27: QR Generation Service Implementation (COMPLETED)**
-- [ ] Tasks 28-30: QR Integration & Routes
+- [x] **Tasks 25-30: QR Generation & API Integration (COMPLETED)**
 - [ ] Tasks 31-36: Frontend Implementation
 - [ ] Tasks 37-42: Testing & Documentation
 
-**Progress: 27/42 tasks completed (64.29%)**
+**Progress: 28/42 tasks completed (66.67%)**
 
 ---
 
