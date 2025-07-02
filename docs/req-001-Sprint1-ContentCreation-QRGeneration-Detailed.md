@@ -243,12 +243,12 @@
     - [x] Add QR code download functionality
     - [x] Test: Verify controller functions work with QR service
 
-29. **Create QR Routes**
-    - [ ] Create `routes/qr-codes.js` file
-    - [ ] Define POST /api/qr-codes/items/:id route for generation
-    - [ ] Define GET /api/qr-codes/:qrId route for validation
-    - [ ] Add QR code download endpoints
-    - [ ] Test: Verify routes return proper QR code data
+29. **Create QR Routes** ✅
+    - [x] Create `routes/qr-codes.js` file
+    - [x] Define POST /api/qr-codes/items/:id route for generation
+    - [x] Define GET /api/qr-codes/:qrId route for validation
+    - [x] Add QR code download endpoints
+    - [x] Test: Verify routes return proper QR code data
 
 30. **Integrate QR API**
     - [ ] Connect QR routes to main Express app
@@ -416,7 +416,7 @@ Upon completion, verify the complete value loop works:
 - [ ] Tasks 31-36: Frontend Implementation
 - [ ] Tasks 37-42: Testing & Documentation
 
-**Progress: 26/42 tasks completed (61.90%)**
+**Progress: 27/42 tasks completed (64.29%)**
 
 ---
 
