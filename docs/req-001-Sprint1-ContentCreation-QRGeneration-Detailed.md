@@ -277,12 +277,12 @@
     - [x] Include submit functionality to API
     - [x] Test: Verify form validation and submission work
 
-33. **Create Property Creation Page**
-    - [ ] Create `pages/properties/new.tsx` file
-    - [ ] Integrate PropertyForm component
-    - [ ] Add navigation and success/error messaging
-    - [ ] Include redirect after successful creation
-    - [ ] Test: Verify property creation flow works end-to-end
+33. **Create Property Creation Page** ✅
+    - [x] Create `pages/properties/new.tsx` file (implemented as `app/properties/new/page.tsx`)
+    - [x] Integrate PropertyForm component
+    - [x] Add navigation and success/error messaging
+    - [x] Include redirect after successful creation
+    - [x] Test: Verify property creation flow works end-to-end
 
 34. **Integrate Property API Calls**
     - [ ] Create `lib/api/properties.ts` file
@@ -415,7 +415,7 @@ Upon completion, verify the complete value loop works:
 - [ ] Tasks 31-36: Frontend Implementation
 - [ ] Tasks 37-42: Testing & Documentation
 
-**Progress: 30/42 tasks completed (71.43%)**
+**Progress: 31/42 tasks completed (73.81%)**
 
 ---
 
