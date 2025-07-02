@@ -105,6 +105,106 @@ class QRCodeController {
     }
 
     /**
+     * Generate QR code for specific item (as per Task 29 spec)
+     * POST /api/qr-codes/items/:id
+     */
+    async createQRCodeForItem(req, res) {
+        try {
+            const startTime = Date.now();
+            const itemId = req.params.id;
+            logger.info('QR code creation for item request received:', {
+                userId: req.user?.id || 'demo',
+                itemId,
+                body: { ...req.body, options: req.body.options ? 'present' : 'none' }
+            });
+
+            // Extract user ID (from auth middleware or use demo)
+            const userId = req.user?.id || qrCodeDataAccess.demoUserId;
+
+            // Validate item ID parameter
+            if (!itemId || typeof itemId !== 'string') {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Item ID is required and must be a valid string',
+                    error: {
+                        type: 'validation',
+                        field: 'id',
+                        code: 'ITEM_ID_REQUIRED'
+                    }
+                });
+            }
+
+            // Extract options from body
+            const options = {
+                allowMultiple: req.body.allowMultiple || false,
+                status: req.body.status || 'active',
+                customQRId: req.body.customQRId || null
+            };
+
+            // Create QR code with image generation using QR service
+            const result = await qrService.generateQRCodeForItem(itemId, userId, options);
+
+            // Handle errors from QR service
+            if (!result.success) {
+                let statusCode = 500;
+                if (result.error?.type === 'validation') {
+                    statusCode = 400;
+                } else if (result.error?.type === 'authorization' || result.error?.code === 'ITEM_NOT_FOUND') {
+                    statusCode = 404; // Item not found or access denied
+                } else if (result.error?.type === 'constraint' || result.error?.code === 'QR_CODE_EXISTS') {
+                    statusCode = 409; // Already has QR code
+                }
+
+                logger.warn('QR code creation for item failed:', {
+                    userId,
+                    itemId,
+                    error: result.error,
+                    message: result.message,
+                    duration: Date.now() - startTime
+                });
+
+                return res.status(statusCode).json({
+                    success: false,
+                    message: result.message,
+                    error: {
+                        type: result.error?.type || 'server_error',
+                        code: statusCode === 404 ? 'ITEM_NOT_FOUND' : 
+                              statusCode === 409 ? 'QR_CODE_EXISTS' : 'QR_CODE_CREATION_FAILED'
+                    }
+                });
+            }
+
+            // Success response
+            logger.info('QR code created for item successfully:', {
+                userId,
+                itemId,
+                qrCodeId: result.data.id,
+                qrId: result.data.qr_id,
+                filename: result.imageInfo?.filename,
+                duration: Date.now() - startTime
+            });
+
+            res.status(201).json({
+                success: true,
+                message: 'QR code generated successfully for item',
+                data: result.data,
+                imageInfo: result.imageInfo
+            });
+
+        } catch (error) {
+            logger.error('QR code creation for item error:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Internal server error during QR code creation for item',
+                error: {
+                    type: 'server_error',
+                    code: 'INTERNAL_ERROR'
+                }
+            });
+        }
+    }
+
+    /**
      * Get QR codes with filtering
      * GET /api/qr-codes
      */

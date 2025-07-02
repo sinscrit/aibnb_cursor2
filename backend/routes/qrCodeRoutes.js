@@ -17,6 +17,9 @@ router.get('/analytics', qrCodeController.getQRCodeAnalytics);
 router.post('/', qrCodeController.createQRCode);
 router.get('/', qrCodeController.getQRCodes);
 
+// Item-specific QR generation route (as specified in task 29)
+router.post('/items/:id', qrCodeController.createQRCodeForItem);
+
 // Public scanning endpoints (no auth required)
 router.get('/:qrId', qrCodeController.getQRCodeByQRId);
 router.post('/:qrId/scan', qrCodeController.recordScan);
