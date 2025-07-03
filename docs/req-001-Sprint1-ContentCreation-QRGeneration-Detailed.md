@@ -307,12 +307,12 @@
     - [x] Include form validation and submission
     - [x] Test: Verify item form validation and submission work
 
-37. **Create Item Management Page**
-    - [ ] Create `pages/items/[propertyId].tsx` file
-    - [ ] Integrate ItemList and ItemForm components
-    - [ ] Add property context and navigation
-    - [ ] Include item creation and deletion functionality
-    - [ ] Test: Verify item management page works correctly
+37. **Create Item Management Page** ✅
+    - [x] Create `pages/items/[propertyId].tsx` file
+    - [x] Integrate ItemList and ItemForm components
+    - [x] Add property context and navigation
+    - [x] Include item creation and deletion functionality
+    - [x] Test: Verify item management page works correctly
 
 38. **Integrate Item API Calls**
     - [ ] Create `lib/api/items.ts` file
@@ -415,7 +415,7 @@ Upon completion, verify the complete value loop works:
 - [ ] Tasks 31-36: Frontend Implementation
 - [ ] Tasks 37-42: Testing & Documentation
 
-**Progress: 34/42 tasks completed (80.95%)**
+**Progress: 35/42 tasks completed (83.33%)**
 
 ---
 
