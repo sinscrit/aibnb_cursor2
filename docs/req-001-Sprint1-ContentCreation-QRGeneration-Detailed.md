@@ -314,12 +314,12 @@
     - [x] Include item creation and deletion functionality
     - [x] Test: Verify item management page works correctly
 
-38. **Integrate Item API Calls**
-    - [ ] Create `lib/api/items.ts` file
-    - [ ] Implement createItem API client function
-    - [ ] Implement getItems and deleteItem API client functions
-    - [ ] Add proper error handling and loading states
-    - [ ] Test: Verify API client functions work with backend
+38. **Integrate Item API Calls** ✅
+    - [x] Create `lib/api/items.ts` file
+    - [x] Implement createItem API client function
+    - [x] Implement getItems and deleteItem API client functions
+    - [x] Add proper error handling and loading states
+    - [x] Test: Verify API client functions work with backend
 
 ---
 
@@ -415,7 +415,7 @@ Upon completion, verify the complete value loop works:
 - [ ] Tasks 31-36: Frontend Implementation
 - [ ] Tasks 37-42: Testing & Documentation
 
-**Progress: 35/42 tasks completed (83.33%)**
+**Progress: 36/42 tasks completed (85.71%)**
 
 ---
 
