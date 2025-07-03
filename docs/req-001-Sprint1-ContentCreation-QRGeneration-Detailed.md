@@ -339,12 +339,12 @@
     - [x] Include success messaging and download options
     - [x] Test: Verify QR generation page works end-to-end
 
-41. **Integrate QR API Calls**
-    - [ ] Create `lib/api/qrCodes.ts` file
-    - [ ] Implement generateQRCode API client function
-    - [ ] Implement validateQRCode API client function
-    - [ ] Add download functionality for QR codes
-    - [ ] Test: Verify QR API client functions work with backend
+41. **Integrate QR API Calls** ✅
+    - [x] Create `lib/api/qrCodes.ts` file
+    - [x] Implement generateQRCode API client function
+    - [x] Implement validateQRCode API client function
+    - [x] Add download functionality for QR codes
+    - [x] Test: Verify QR API client functions work with backend
 
 42. **Add QR Code Management to Item UI**
     - [ ] Update ItemList component to show QR code status
