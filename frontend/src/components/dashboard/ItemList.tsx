@@ -1,8 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Item } from '@/types/item';
+import { QRCode } from '@/types/qrCode';
+import { getQRCodesForItem, generateQRCode, downloadQRCode } from '@/lib/api/qrCodes';
 
 interface ItemListProps {
   items: Item[];
@@ -10,6 +12,7 @@ interface ItemListProps {
   loading?: boolean;
   onDeleteItem: (itemId: string, itemName: string) => Promise<void>;
   onRefresh?: () => void;
+  onQRGenerated?: (itemId: string, qrCode: QRCode) => void;
 }
 
 export default function ItemList({
@@ -17,9 +20,104 @@ export default function ItemList({
   propertyId,
   loading = false,
   onDeleteItem,
-  onRefresh
+  onRefresh,
+  onQRGenerated
 }: ItemListProps): React.JSX.Element {
   const [deletingItemId, setDeletingItemId] = useState<string | null>(null);
+  const [itemQRCodes, setItemQRCodes] = useState<Record<string, QRCode[]>>({});
+  const [loadingQR, setLoadingQR] = useState<Record<string, boolean>>({});
+  const [generatingQR, setGeneratingQR] = useState<Record<string, boolean>>({});
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  // Load QR codes for all items
+  useEffect(() => {
+    const loadQRCodes = async (): Promise<void> => {
+      if (items.length === 0) return;
+
+      const qrCodePromises = items.map(async (item) => {
+        try {
+          setLoadingQR(prev => ({ ...prev, [item.id]: true }));
+          const qrCodes = await getQRCodesForItem(item.id);
+          return { itemId: item.id, qrCodes };
+        } catch (error) {
+          console.error(`Error loading QR codes for item ${item.id}:`, error);
+          return { itemId: item.id, qrCodes: [] };
+        } finally {
+          setLoadingQR(prev => ({ ...prev, [item.id]: false }));
+        }
+      });
+
+      const results = await Promise.all(qrCodePromises);
+      const qrCodeMap: Record<string, QRCode[]> = {};
+      results.forEach(({ itemId, qrCodes }) => {
+        qrCodeMap[itemId] = qrCodes;
+      });
+      setItemQRCodes(qrCodeMap);
+    };
+
+    loadQRCodes();
+  }, [items]);
+
+  // Auto-clear success message
+  useEffect(() => {
+    if (successMessage) {
+      const timer = setTimeout(() => setSuccessMessage(null), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [successMessage]);
+
+  // Generate QR code for an item
+  const handleGenerateQR = async (item: Item): Promise<void> => {
+    try {
+      setGeneratingQR(prev => ({ ...prev, [item.id]: true }));
+      
+      const result = await generateQRCode(item.id);
+      
+      // Update local state
+      setItemQRCodes(prev => ({
+        ...prev,
+        [item.id]: [...(prev[item.id] || []), result.qrCode]
+      }));
+      
+      setSuccessMessage(`QR code generated successfully for "${item.name}"`);
+      
+      if (onQRGenerated) {
+        onQRGenerated(item.id, result.qrCode);
+      }
+    } catch (error) {
+      console.error('Error generating QR code:', error);
+      setSuccessMessage(`Failed to generate QR code for "${item.name}"`);
+    } finally {
+      setGeneratingQR(prev => ({ ...prev, [item.id]: false }));
+    }
+  };
+
+  // Download QR code
+  const handleDownloadQR = async (qrCode: QRCode, itemName: string): Promise<void> => {
+    try {
+      await downloadQRCode(qrCode.qr_id);
+      setSuccessMessage(`QR code downloaded for "${itemName}"`);
+    } catch (error) {
+      console.error('Error downloading QR code:', error);
+      setSuccessMessage(`Failed to download QR code for "${itemName}"`);
+    }
+  };
+
+  // Get QR code status for an item
+  const getQRStatus = (itemId: string): { hasQR: boolean; activeQRs: number; totalQRs: number; latestQR?: QRCode } => {
+    const qrCodes = itemQRCodes[itemId] || [];
+    const activeQRs = qrCodes.filter(qr => qr.status === 'active');
+    const latestQR = qrCodes.length > 0 ? qrCodes.sort((a, b) => 
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    )[0] : undefined;
+    
+    return {
+      hasQR: qrCodes.length > 0,
+      activeQRs: activeQRs.length,
+      totalQRs: qrCodes.length,
+      latestQR
+    };
+  };
 
   // Handle item deletion with confirmation
   const handleDelete = async (item: Item): Promise<void> => {
@@ -113,6 +211,28 @@ export default function ItemList({
 
   return (
     <div className="bg-white shadow rounded-lg">
+      {/* Success Message */}
+      {successMessage && (
+        <div className="px-6 py-3 bg-blue-50 border-b border-blue-200">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <svg className="h-5 w-5 text-blue-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <p className="text-sm text-blue-700">{successMessage}</p>
+            </div>
+            <button
+              onClick={() => setSuccessMessage(null)}
+              className="text-blue-400 hover:text-blue-600"
+            >
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="px-6 py-4 border-b border-gray-200">
         <div className="flex items-center justify-between">
@@ -150,6 +270,9 @@ export default function ItemList({
         {items.map((item) => {
           const mediaInfo = getMediaTypeInfo(item.media_type);
           const isDeleting = deletingItemId === item.id;
+          const qrStatus = getQRStatus(item.id);
+          const isLoadingItemQR = loadingQR[item.id] || false;
+          const isGeneratingItemQR = generatingQR[item.id] || false;
           
           return (
             <div key={item.id} className="px-6 py-4 hover:bg-gray-50 transition-colors duration-200">
@@ -193,22 +316,114 @@ export default function ItemList({
                       {item.media_url && (
                         <span className="text-blue-600">Has Media</span>
                       )}
+                      {/* QR Code Status */}
+                      {isLoadingItemQR ? (
+                        <span className="flex items-center text-gray-400">
+                          <svg className="animate-spin h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          Loading QR...
+                        </span>
+                      ) : qrStatus.hasQR ? (
+                        <span className={`flex items-center ${qrStatus.activeQRs > 0 ? 'text-green-600' : 'text-yellow-600'}`}>
+                          <svg className="h-3 w-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h4" />
+                          </svg>
+                          {qrStatus.activeQRs > 0 ? `${qrStatus.activeQRs} Active QR` : `${qrStatus.totalQRs} QR (Inactive)`}
+                        </span>
+                      ) : (
+                        <span className="text-gray-400">No QR Code</span>
+                      )}
                     </div>
                   </div>
                 </div>
                 
                 {/* Quick Actions */}
                 <div className="flex items-center space-x-2 ml-4">
-                  <Link
-                    href={`/qr/generate/${item.id}`}
-                    className="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                  >
-                    <svg className="h-3 w-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h4" />
-                    </svg>
-                    QR Code
-                  </Link>
+                  {/* QR Code Actions */}
+                  {qrStatus.hasQR ? (
+                    <div className="flex items-center space-x-1">
+                      {/* Download QR Button */}
+                      {qrStatus.latestQR && (
+                        <button
+                          onClick={() => handleDownloadQR(qrStatus.latestQR!, item.name)}
+                          className="inline-flex items-center px-3 py-1.5 border border-green-300 shadow-sm text-xs font-medium rounded text-green-700 bg-white hover:bg-green-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                          title="Download QR Code"
+                        >
+                          <svg className="h-3 w-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                          Download
+                        </button>
+                      )}
+                      
+                      {/* Regenerate QR Button */}
+                      <button
+                        onClick={() => handleGenerateQR(item)}
+                        disabled={isGeneratingItemQR}
+                        className="inline-flex items-center px-3 py-1.5 border border-blue-300 shadow-sm text-xs font-medium rounded text-blue-700 bg-white hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="Generate New QR Code"
+                      >
+                        {isGeneratingItemQR ? (
+                          <>
+                            <svg className="animate-spin h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Generating...
+                          </>
+                        ) : (
+                          <>
+                            <svg className="h-3 w-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                            New QR
+                          </>
+                        )}
+                      </button>
+                      
+                      {/* View QR Generation Page */}
+                      <Link
+                        href={`/qr/generate/${item.id}`}
+                        className="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                        title="Manage QR Codes"
+                      >
+                        <svg className="h-3 w-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                        Manage
+                      </Link>
+                    </div>
+                  ) : (
+                    /* Generate First QR Button */
+                    <button
+                      onClick={() => handleGenerateQR(item)}
+                      disabled={isGeneratingItemQR}
+                      className="inline-flex items-center px-3 py-1.5 border border-blue-300 shadow-sm text-xs font-medium rounded text-blue-700 bg-blue-50 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                      title="Generate QR Code"
+                    >
+                      {isGeneratingItemQR ? (
+                        <>
+                          <svg className="animate-spin h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          Generating...
+                        </>
+                      ) : (
+                        <>
+                          <svg className="h-3 w-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h4" />
+                          </svg>
+                          Generate QR
+                        </>
+                      )}
+                    </button>
+                  )}
                   
+                  {/* Regular Actions */}
                   <Link
                     href={`/items/${propertyId}/${item.id}/edit`}
                     className="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"

@@ -346,12 +346,12 @@
     - [x] Add download functionality for QR codes
     - [x] Test: Verify QR API client functions work with backend
 
-42. **Add QR Code Management to Item UI**
-    - [ ] Update ItemList component to show QR code status
-    - [ ] Add "Generate QR" button to item actions
-    - [ ] Include QR code regeneration functionality
-    - [ ] Show QR code download links when available
-    - [ ] Test: Verify QR code management integration works
+42. **Add QR Code Management to Item UI** ✅
+    - [x] Update ItemList component to show QR code status
+    - [x] Add "Generate QR" button to item actions
+    - [x] Include QR code regeneration functionality
+    - [x] Show QR code download links when available
+    - [x] Test: Verify QR code management integration works
 
 ---
 
@@ -415,7 +415,7 @@ Upon completion, verify the complete value loop works:
 - [ ] Tasks 31-36: Frontend Implementation
 - [ ] Tasks 37-42: Testing & Documentation
 
-**Progress: 36/42 tasks completed (85.71%)**
+**Progress: 42/42 tasks completed (100%)**
 
 ---
 
